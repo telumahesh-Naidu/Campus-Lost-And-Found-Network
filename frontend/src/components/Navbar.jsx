@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { FiHome, FiLogIn, FiUserPlus, FiPlusCircle } from "react-icons/fi";
+import { FiHome, FiLogIn, FiUserPlus, FiPlusCircle, FiMenu, FiChevronDown, FiList, FiAlertTriangle, FiUser } from "react-icons/fi";
 
 function Navbar() {
   const location = useLocation();
@@ -34,9 +34,9 @@ function Navbar() {
         <div className="hidden md:flex items-center gap-6 text-sm font-semibold">
           
           <Link
-            to="/"
+            to="/home"
             className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${
-              isActive("/") 
+              isActive("/home") 
                 ? "bg-white/10 text-cyan-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]" 
                 : "text-gray-300 hover:text-white hover:bg-white/5"
             }`}
@@ -45,36 +45,57 @@ function Navbar() {
             Home
           </Link>
 
+          {/* Menu Dropdown */}
+          <div className="relative group">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-300">
+              <FiMenu className="text-lg" />
+              Menu
+              <FiChevronDown className="ml-1 opacity-70 group-hover:rotate-180 transition-transform duration-300" />
+            </button>
+            
+            <div className="absolute top-full right-0 mt-4 w-56 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 flex flex-col p-2 transform origin-top-right group-hover:translate-y-0 translate-y-2">
+              
+              <Link to="/items" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:text-cyan-400 hover:bg-white/5 transition-all duration-300">
+                <FiList className="text-lg" />
+                All Items
+              </Link>
+              
+              <Link to="/report-lost" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:text-amber-400 hover:bg-white/5 transition-all duration-300">
+                <FiAlertTriangle className="text-lg" />
+                Report Lost Item
+              </Link>
+
+              <Link to="/post-item" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:text-blue-400 hover:bg-white/5 transition-all duration-300">
+                <FiPlusCircle className="text-lg" />
+                Post Found Item
+              </Link>
+
+              <div className="h-px bg-white/10 my-1 mx-2"></div>
+
+              <Link to="/login" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-300">
+                <FiLogIn className="text-lg" />
+                Login
+              </Link>
+
+              <Link to="/register" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-300">
+                <FiUserPlus className="text-lg" />
+                Register
+              </Link>
+
+            </div>
+          </div>
+
+          {/* Profile Icon */}
           <Link
-            to="/login"
+            to="/profile"
             className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${
-              isActive("/login") 
+              isActive("/profile") 
                 ? "bg-white/10 text-cyan-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]" 
                 : "text-gray-300 hover:text-white hover:bg-white/5"
             }`}
           >
-            <FiLogIn className="text-lg" />
-            Login
-          </Link>
-
-          <Link
-            to="/register"
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${
-              isActive("/register") 
-                ? "bg-white/10 text-cyan-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]" 
-                : "text-gray-300 hover:text-white hover:bg-white/5"
-            }`}
-          >
-            <FiUserPlus className="text-lg" />
-            Register
-          </Link>
-
-          <Link
-            to="/post-item"
-            className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-6 py-2.5 rounded-full font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] transition-all duration-300 hover:-translate-y-0.5 ml-2"
-          >
-            <FiPlusCircle className="text-xl" />
-            Post Item
+            <FiUser className="text-lg" />
+            <span className="hidden md:inline">Profile</span>
           </Link>
         </div>
       </div>

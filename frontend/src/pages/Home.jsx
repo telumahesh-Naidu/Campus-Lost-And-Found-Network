@@ -1,30 +1,7 @@
-import { useEffect, useState } from "react";
-import API from "../services/api";
-import ItemCard from "../components/ItemCard";
-import SearchBar from "../components/SearchBar";
 import { Link } from "react-router-dom";
-import { FiPlusCircle, FiAlertTriangle, FiSearch } from "react-icons/fi";
+import { FiPlusCircle, FiAlertTriangle } from "react-icons/fi";
 
 function Home() {
-  const [items, setItems] = useState([]);
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    fetchItems();
-  }, []);
-
-  const fetchItems = async () => {
-    try {
-      const res = await API.get("/items/all");
-      setItems(res.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const filteredItems = items.filter((item) =>
-    item.title.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950/40 to-black text-white overflow-hidden relative">
@@ -54,15 +31,14 @@ function Home() {
             with their lost belongings across the campus quickly and safely.
           </p>
           
-          {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-14 animate-fade-in-up-delay-2 relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-            <div className="relative">
-              <SearchBar
-                search={search}
-                setSearch={setSearch}
-              />
-            </div>
+          {/* Explore Button */}
+          <div className="max-w-2xl mx-auto mb-14 animate-fade-in-up-delay-2 relative group flex justify-center">
+             <Link
+               to="/items"
+               className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold px-10 py-4 rounded-full backdrop-blur-md shadow-xl transition-all duration-300 hover:shadow-cyan-500/20"
+             >
+               Explore All Items
+             </Link>
           </div>
 
           {/* Buttons */}
@@ -86,56 +62,7 @@ function Home() {
         </div>
       </section>
 
-      {/* Recently Added Section */}
-      <section className="relative max-w-7xl mx-auto px-6 py-20 z-10 animate-fade-in-up-delay-2">
 
-        {/* Section Header */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-5 border-b border-white/10 pb-6">
-          <div>
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-              Recently Added Items
-            </h2>
-            <p className="text-cyan-400/80 mt-2 font-medium tracking-wide text-sm uppercase">
-              Browse the latest lost and found items
-            </p>
-          </div>
-
-          <button className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-2.5 rounded-full transition-all duration-300 hover:border-white/20 text-sm font-semibold">
-            View All Collection
-          </button>
-        </div>
-
-        {/* Empty State */}
-        {filteredItems.length === 0 ? (
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-20 text-center shadow-2xl relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,255,255,0.05)]">
-                <FiSearch className="text-4xl text-cyan-400 opacity-80" />
-              </div>
-              <h3 className="text-3xl font-bold text-white mb-3">
-                No Items Found
-              </h3>
-              <p className="text-gray-400 max-w-md mx-auto">
-                We couldn't find any items matching your current search criteria. Try adjusting your keywords.
-              </p>
-            </div>
-          </div>
-        ) : (
-          /* Items Grid */
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredItems.map((item, index) => (
-              <div
-                key={item._id}
-                className="transform hover:-translate-y-2 transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(6,182,212,0.2)]"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <ItemCard item={item} />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* Footer */}
       <footer className="relative border-t border-white/10 bg-black/50 backdrop-blur-xl py-12 mt-20 z-10">

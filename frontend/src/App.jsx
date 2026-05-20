@@ -8,6 +8,8 @@ import ItemDetails from "./pages/ItemDetails";
 import ForgotPassword from "./pages/ForgotPassword";
 import ReportLostItem from "./pages/ReportLostItem";
 import VerifyOTP from "./pages/VerifyOtp";
+import ItemsList from "./pages/ItemsList";
+import Profile from "./pages/Profile";
 
 function App() {
   const isAuth = () => {
@@ -21,16 +23,21 @@ function App() {
     <BrowserRouter>
       <Navbar />
 
-      <Routes>
-        <Route path="/" element={isAuth() ? <Home /> : <Navigate to="/login" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/post-item" element={<PostItem />} />
-        <Route path="/item/:id" element={<ItemDetails />} />
-        <Route path="/forgot-password" element={<ForgotPassword/>}/>
-        <Route path="/report-lost" element={<ReportLostItem/>}/>
-        <Route path="/verify-otp" element={<VerifyOTP/>}/>
-      </Routes>
+      <main className="min-h-screen overflow-x-hidden">
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/home" element={isAuth() ? <Home /> : <Navigate to="/login" replace />} />
+          <Route path="/items" element={isAuth() ? <ItemsList /> : <Navigate to="/login" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/post-item" element={isAuth() ? <PostItem /> : <Navigate to="/login" replace />} />
+          <Route path="/item/:id" element={isAuth() ? <ItemDetails /> : <Navigate to="/login" replace />} />
+          <Route path="/forgot-password" element={<ForgotPassword/>}/>
+          <Route path="/report-lost" element={isAuth() ? <ReportLostItem/> : <Navigate to="/login" replace />} />
+          <Route path="/verify-otp" element={<VerifyOTP/>}/>
+          <Route path="/profile" element={isAuth() ? <Profile /> : <Navigate to="/login" replace />} />
+        </Routes>
+      </main>
     </BrowserRouter>
   );
 }

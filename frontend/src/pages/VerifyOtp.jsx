@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../services/api";
 
 function VerifyOTP() {
   const navigate = useNavigate();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
+  const [loading, setLoading] = useState(false);
 
   // Countdown Timer
   useEffect(() => {
@@ -41,34 +43,70 @@ function VerifyOTP() {
   };
 
   // Verify OTP
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const enteredOTP = otp.join("");
 
-    // Example OTP
-    const savedOTP = localStorage.getItem("otp");
+    if (enteredOTP.length !== 6) {
+      return alert("Please enter the complete 6-digit OTP");
+    }
 
-    if (enteredOTP === savedOTP) {
-      alert("OTP Verified Successfully ✅");
+    const registerData = JSON.parse(localStorage.getItem("registerData"));
 
-      navigate("/");
-    } else {
-      alert("Invalid OTP ❌");
+    if (!registerData || !registerData.email) {
+      alert("Registration data missing. Please register again.");
+      return navigate("/register");
+    }
+
+    try {
+      setLoading(true);
+
+      // Verify OTP with Backend
+      await API.post("/auth/verify-otp", {
+        email: registerData.email,
+        otp: enteredOTP,
+      });
+
+      // Register User
+      await API.post("/auth/register", registerData);
+
+      alert("Registration Successful ✅");
+      localStorage.removeItem("registerData");
+
+      navigate("/login");
+
+    } catch (error) {
+      alert(error.response?.data?.message || "Invalid OTP ❌");
+    } finally {
+      setLoading(false);
     }
   };
 
   // Resend OTP
-  const resendOTP = () => {
-    const newOTP = Math.floor(100000 + Math.random() * 900000);
+  const resendOTP = async () => {
+    const registerData = JSON.parse(localStorage.getItem("registerData"));
 
-    localStorage.setItem("otp", newOTP);
+    if (!registerData || !registerData.email) {
+      alert("Registration data missing. Please register again.");
+      return navigate("/register");
+    }
 
-    console.log("New OTP:", newOTP);
+    try {
+      setLoading(true);
 
-    alert("New OTP Sent ✅");
+      const res = await API.post("/auth/send-otp", {
+        email: registerData.email,
+      });
 
-    setTimer(60);
+      alert(res.data.message || "New OTP Sent ✅");
+      setTimer(60);
+
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to resend OTP");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -129,9 +167,10 @@ function VerifyOTP() {
           {/* Verify Button */}
           <button
             type="submit"
-            className="w-full mt-8 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-black font-bold py-4 rounded-2xl shadow-xl hover:scale-105 transition duration-300"
+            disabled={loading}
+            className="w-full mt-8 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-black font-bold py-4 rounded-2xl shadow-xl hover:scale-105 transition duration-300 disabled:opacity-60"
           >
-            Verify OTP
+            {loading ? "Verifying..." : "Verify OTP"}
           </button>
         </form>
 

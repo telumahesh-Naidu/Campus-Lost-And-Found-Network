@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-// Dummy login: no API call required
-import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn } from "react-icons/fi";
+import API from "../services/api";
+import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn, FiUserPlus } from "react-icons/fi";
 
 function Login() {
   const navigate = useNavigate();
@@ -20,17 +20,24 @@ function Login() {
     });
   };
 
+  const [loading, setLoading] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      // Accept any email/password — treat as successful login
-      localStorage.setItem("token", "dummy-token");
-      localStorage.setItem("userEmail", formData.email || "user@example.com");
+      setLoading(true);
+      const res = await API.post("/auth/login", formData);
+      
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("userEmail", res.data.user.email);
+      
       alert("Login Successful ✅ ");
-      navigate("/");
+      navigate("/home");
     } catch (error) {
-      alert("Login Failed");
+      alert(error.response?.data?.message || "Login Failed ❌");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,23 +127,22 @@ function Login() {
           {/* Login Button */}
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-3 text-sm rounded-xl transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] hover:-translate-y-0.5 mt-2"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-3 text-sm rounded-xl transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] hover:-translate-y-0.5 mt-2 disabled:opacity-60"
           >
-            <span>Login to Account</span>
+            <span>{loading ? "Logging in..." : "Login to Account"}</span>
             <FiLogIn className="text-lg" />
           </button>
         </form>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Don’t have an account?{" "}
-          <Link
-            to="/register"
-            className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline transition-colors"
-          >
-            Create one now
-          </Link>
-        </p>
+        {/* Create Account Button */}
+        <Link
+          to="/register"
+          className="w-full flex items-center justify-center gap-2 border-2 border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 text-white font-bold py-3 text-sm rounded-xl transition-all duration-300 hover:-translate-y-0.5 mt-4"
+        >
+          <FiUserPlus className="text-lg" />
+          <span>Create Account</span>
+        </Link>
       </div>
     </div>
   );
