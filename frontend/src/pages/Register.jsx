@@ -79,7 +79,6 @@ function Register() {
     }));
   };
 
-  // REGISTER USER DIRECTLY (NO OTP)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -91,25 +90,28 @@ function Register() {
         email: formData.email.trim().toLowerCase(),
       };
 
-      const res = await API.post(
-        "/auth/register",
-        payload
-      );
+      console.log("Sending OTP request for:", payload.email);
 
-      toast.success(
-        res.data.message || "Registration Successful"
-      );
+      await API.post("/auth/send-otp", {
+        email: payload.email,
+      });
 
-      navigate("/login");
+      toast.success("OTP sent to your email!");
+
+      localStorage.setItem("registerData", JSON.stringify(payload));
+      navigate("/verify-otp");
 
     } catch (error) {
-      console.error(error);
+      console.error("Registration error:", error);
 
       let message = error.response?.data?.message;
 
       if (!message && error.request && !error.response) {
-        message =
-          "Cannot reach the server. Start the backend (npm run dev in /backend) and try again.";
+        message = "Cannot reach the server. Start the backend and try again.";
+      }
+
+      if (error.response?.status === 502) {
+        message = "Backend unreachable (502). The server may be restarting — please wait a moment and try again.";
       }
 
       toast.error(message || error.message || "Registration failed");
@@ -138,7 +140,7 @@ function Register() {
           variants={itemVariants}
           className="space-y-2"
         >
-          <label className="text-sm text-gray-300">
+          <label className="text-sm text-gray-600 dark:text-gray-300">
             Full Name
           </label>
 
@@ -152,7 +154,7 @@ function Register() {
               value={formData.name}
               onChange={handleChange}
               required
-              className="w-full bg-slate-900/70 border border-white/10 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none rounded-2xl py-3 pl-12 pr-4 text-white transition"
+              className="w-full bg-white border border-gray-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none rounded-2xl py-3 pl-12 pr-4 text-gray-900 dark:bg-slate-900/70 dark:border-white/10 dark:text-white transition"
             />
           </div>
         </motion.div>
@@ -162,7 +164,7 @@ function Register() {
           variants={itemVariants}
           className="space-y-2"
         >
-          <label className="text-sm text-gray-300">
+          <label className="text-sm text-gray-600 dark:text-gray-300">
             Email
           </label>
 
@@ -176,7 +178,7 @@ function Register() {
               value={formData.email}
               onChange={handleChange}
               required
-              className="w-full bg-slate-900/70 border border-white/10 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none rounded-2xl py-3 pl-12 pr-4 text-white transition"
+              className="w-full bg-white border border-gray-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none rounded-2xl py-3 pl-12 pr-4 text-gray-900 dark:bg-slate-900/70 dark:border-white/10 dark:text-white transition"
             />
           </div>
         </motion.div>
@@ -186,7 +188,7 @@ function Register() {
           variants={itemVariants}
           className="space-y-2"
         >
-          <label className="text-sm text-gray-300">
+          <label className="text-sm text-gray-600 dark:text-gray-300">
             Password
           </label>
 
@@ -201,7 +203,7 @@ function Register() {
               onChange={handleChange}
               required
               minLength={6}
-              className="w-full bg-slate-900/70 border border-white/10 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none rounded-2xl py-3 pl-12 pr-4 text-white transition"
+              className="w-full bg-white border border-gray-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none rounded-2xl py-3 pl-12 pr-4 text-gray-900 dark:bg-slate-900/70 dark:border-white/10 dark:text-white transition"
             />
           </div>
         </motion.div>
@@ -211,7 +213,7 @@ function Register() {
           variants={itemVariants}
           className="space-y-2"
         >
-          <label className="text-sm text-gray-300">
+          <label className="text-sm text-gray-600 dark:text-gray-300">
             Department
           </label>
 
@@ -223,7 +225,7 @@ function Register() {
               value={formData.department}
               onChange={handleChange}
               required
-              className="w-full appearance-none bg-slate-900/70 border border-white/10 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none rounded-2xl py-3 pl-12 pr-4 text-white transition"
+              className="w-full appearance-none bg-white border border-gray-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none rounded-2xl py-3 pl-12 pr-4 text-gray-900 dark:bg-slate-900/70 dark:border-white/10 dark:text-white transition"
             >
               <option value="">
                 Select Department
@@ -253,12 +255,12 @@ function Register() {
           {loading ? (
             <>
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              Creating Account...
+              Sending OTP...
             </>
           ) : (
             <>
               <FiUserPlus />
-              Create Account
+              Continue with OTP
             </>
           )}
         </motion.button>

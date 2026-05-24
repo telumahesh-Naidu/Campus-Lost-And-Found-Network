@@ -125,7 +125,7 @@ function ForgotPassword() {
           <motion.span whileHover={{ scale: 1.05 }} className="inline-block">
             <Link
               to="/login"
-              className="text-cyan-300 hover:text-white hover:underline"
+              className="text-cyan-600 hover:text-gray-900 dark:text-cyan-300 dark:hover:text-white hover:underline"
             >
               Back to Login
             </Link>

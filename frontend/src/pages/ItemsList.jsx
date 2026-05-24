@@ -1,80 +1,76 @@
-import { useEffect, useState } from "react";
-import API from "../services/api";
-import ItemCard from "../components/ItemCard";
-import SearchBar from "../components/SearchBar";
-import { FiSearch } from "react-icons/fi";
+import { Package } from "lucide-react";
+import { Link } from "react-router-dom";
+import AdvancedSearch from "../components/AdvancedSearch";
+import ItemGrid from "../components/ItemGrid";
+import { useItemSearch } from "../hooks/useItemSearch";
 
 function ItemsList() {
-  const [items, setItems] = useState([]);
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    fetchItems();
-  }, []);
-
-  const fetchItems = async () => {
-    try {
-      const res = await API.get("/items/all");
-      setItems(res.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const filteredItems = items.filter((item) =>
-    item.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const {
+    filters, updateFilter, resetFilters, hasActiveFilters,
+    items, total, totalPages, page, setPage, loading, error,
+  } = useItemSearch(); // no overrides — shows all types
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950/40 to-black text-white px-6 pt-28 pb-20 relative overflow-hidden">
-      {/* Background Glow */}
-      <div className="absolute top-[10%] right-[-5%] w-[400px] h-[400px] bg-cyan-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+    <div className="item-page min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-white dark:from-slate-950 dark:via-blue-950/40 dark:to-black text-gray-900 dark:text-white px-4 sm:px-6 pt-24 pb-20 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute top-[10%] right-[-5%] w-[400px] h-[400px] bg-cyan-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[20%] left-[-5%] w-[300px] h-[300px] bg-violet-500/8 blur-[100px] rounded-full pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto z-10 relative">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-5 border-b border-white/10 pb-6">
-          <div>
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-              All Items
-            </h2>
-            <p className="text-cyan-400/80 mt-2 font-medium tracking-wide text-sm uppercase">
-              Browse reported lost and found items
-            </p>
-          </div>
-
-          <div className="w-full md:w-96 relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-            <div className="relative">
-              <SearchBar search={search} setSearch={setSearch} />
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Page header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/20 flex items-center justify-center">
+              <Package size={18} className="text-cyan-400" />
             </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+              All Items
+            </h1>
           </div>
+          <p className="text-gray-500 dark:text-white/40 text-sm ml-12">
+            Browse all reported lost and found items across campus
+          </p>
         </div>
 
-        {/* Empty State */}
-        {filteredItems.length === 0 ? (
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-20 text-center shadow-2xl relative overflow-hidden group mt-10">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,255,255,0.05)]">
-                <FiSearch className="text-4xl text-cyan-400 opacity-80" />
-              </div>
-              <h3 className="text-3xl font-bold text-white mb-3">No Items Found</h3>
-              <p className="text-gray-400 max-w-md mx-auto">
-                We couldn't find any items matching your current search criteria.
-              </p>
-            </div>
-          </div>
-        ) : (
-          /* Items Grid */
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredItems.map((item, index) => (
-              <div
-                key={item._id}
-                className="transform hover:-translate-y-2 transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(6,182,212,0.2)]"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <ItemCard item={item} />
-              </div>
-            ))}
+        {/* Advanced search + filters */}
+        <div className="mb-8">
+          <AdvancedSearch
+            filters={filters}
+            updateFilter={updateFilter}
+            resetFilters={resetFilters}
+            hasActiveFilters={hasActiveFilters}
+            total={total}
+            loading={loading}
+          />
+        </div>
+
+        {/* Item grid with pagination */}
+        <ItemGrid
+          items={items}
+          loading={loading}
+          error={error}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          hasFilters={hasActiveFilters}
+          emptyMessage="No items have been posted yet."
+        />
+
+        {/* Quick-post links */}
+        {!loading && items.length === 0 && !hasActiveFilters && (
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
+            <Link
+              to="/report-lost"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/25 text-amber-300 text-sm font-medium hover:bg-amber-500/25 transition-all"
+            >
+              Report a lost item
+            </Link>
+            <Link
+              to="/post-item"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/25 text-cyan-300 text-sm font-medium hover:bg-cyan-500/25 transition-all"
+            >
+              Post a found item
+            </Link>
           </div>
         )}
       </div>

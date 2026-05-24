@@ -22,7 +22,7 @@ export default function ChatList({ rooms, loading, selectedRoomId }) {
                 <NavLink
                   to={`/messages/${r._id}`}
                   className={({ isActive }) =>
-                    `block px-4 py-3 hover:bg-white/5 transition-colors ${
+                    `block px-4 py-3 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors ${
                       isActive || selectedRoomId === r._id ? "bg-cyan-500/10 border-l-4 border-cyan-400" : ""
                     }`
                   }

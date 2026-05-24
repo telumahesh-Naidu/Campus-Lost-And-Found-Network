@@ -1,99 +1,86 @@
-import { useEffect, useState } from "react";
+import { AlertTriangle, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
-import API from "../services/api";
-import ItemCard from "../components/ItemCard";
-import SearchBar from "../components/SearchBar";
-import { FiAlertTriangle, FiFlag } from "react-icons/fi";
+import AdvancedSearch from "../components/AdvancedSearch";
+import ItemGrid from "../components/ItemGrid";
+import { useItemSearch } from "../hooks/useItemSearch";
+
+// type is locked to "lost" via overrides
+const OVERRIDES = { type: "lost" };
 
 function LostReports() {
-  const [items, setItems] = useState([]);
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    fetchLostReports();
-  }, []);
-
-  const fetchLostReports = async () => {
-    try {
-      const res = await API.get("/items/lost");
-      setItems(res.data);
-    } catch (error) {
-      console.error(error);
-      setItems([]);
-    }
-  };
-
-  const filteredItems = items.filter((item) =>
-    item.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const {
+    filters, updateFilter, resetFilters, hasActiveFilters,
+    items, total, totalPages, page, setPage, loading, error,
+  } = useItemSearch(OVERRIDES);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-950 via-blue-950/40 to-black text-white px-6 pt-28 pb-20 relative overflow-hidden">
-      <div className="absolute top-[10%] right-[-5%] w-100 h-100 bg-amber-500/10 blur-[120px] rounded-full pointer-events-none" />
+    <div className="item-page min-h-screen bg-gradient-to-br from-[#f4f7fb] via-amber-50/50 to-white dark:from-slate-950 dark:via-amber-950/15 dark:to-black text-gray-900 dark:text-white px-4 sm:px-6 pt-24 pb-20 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute top-[10%] right-[-5%] w-[400px] h-[400px] bg-amber-400/10 dark:bg-amber-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[20%] left-[-5%] w-[300px] h-[300px] bg-orange-400/8 dark:bg-orange-500/8 blur-[100px] rounded-full pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto z-10 relative">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-5 border-b border-white/10 pb-6">
-          <div>
-            <h2 className="text-4xl font-bold bg-linear-to-r from-amber-200 to-orange-300 bg-clip-text text-transparent flex items-center gap-3">
-              <FiFlag className="text-amber-400 shrink-0" aria-hidden />
-              Reported lost items
-            </h2>
-            <p className="text-amber-400/80 mt-2 font-medium tracking-wide text-sm uppercase">
-              Items people reported as lost — check here before posting a find
-            </p>
-          </div>
-
-          <div className="w-full md:w-96 relative group">
-            <div className="absolute -inset-1 bg-linear-to-r from-amber-400 to-orange-500 rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
-            <div className="relative">
-              <SearchBar search={search} setSearch={setSearch} />
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Page header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/20 flex items-center justify-center">
+                  <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400" />
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-700 to-orange-600 dark:from-amber-200 dark:to-orange-300 bg-clip-text text-transparent">
+                  Reported Lost Items
+                </h1>
+              </div>
+              <p className="text-gray-500 dark:text-white/40 text-sm ml-12">
+                Items reported as lost — check here before posting a find
+              </p>
             </div>
+            <Link
+              to="/report-lost"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-100 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/25 text-amber-700 dark:text-amber-300 text-sm font-medium hover:bg-amber-200 dark:hover:bg-amber-500/25 transition-all"
+            >
+              <Plus size={15} />
+              Report lost item
+            </Link>
           </div>
         </div>
 
-        <p className="text-gray-400 text-sm mb-8 max-w-2xl">
-          After someone submits a lost report, it appears on this page for the campus community.
-          {" "}
-          <Link to="/report-lost" className="text-cyan-400 hover:underline font-medium">
+        {/* Advanced search — hideTypeFilter since page is already scoped */}
+        <div className="mb-8">
+          <AdvancedSearch
+            filters={filters}
+            updateFilter={updateFilter}
+            resetFilters={resetFilters}
+            hasActiveFilters={hasActiveFilters}
+            total={total}
+            loading={loading}
+            hideTypeFilter
+          />
+        </div>
+
+        {/* Item grid */}
+        <ItemGrid
+          items={items}
+          loading={loading}
+          error={error}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          hasFilters={hasActiveFilters}
+          emptyMessage="No lost items have been reported yet."
+        />
+
+        {/* Mobile report CTA */}
+        <div className="sm:hidden mt-8 text-center">
+          <Link
+            to="/report-lost"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-100 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/25 text-amber-700 dark:text-amber-300 text-sm font-medium"
+          >
+            <Plus size={15} />
             Report a lost item
           </Link>
-        </p>
-
-        {filteredItems.length === 0 ? (
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-20 text-center shadow-2xl relative overflow-hidden group mt-4">
-            <div className="absolute inset-0 bg-linear-to-br from-amber-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,255,255,0.05)]">
-                <FiAlertTriangle className="text-4xl text-amber-400 opacity-80" aria-hidden />
-              </div>
-              <h3 className="text-3xl font-bold text-white mb-3">No lost reports yet</h3>
-              <p className="text-gray-400 max-w-md mx-auto mb-6">
-                {search
-                  ? "No lost reports match your search."
-                  : "When users report something lost, it will show up here."}
-              </p>
-              <Link
-                to="/report-lost"
-                className="inline-flex items-center gap-2 bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-bold px-6 py-3 rounded-xl transition-all"
-              >
-                <FiAlertTriangle aria-hidden />
-                Report lost item
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredItems.map((item, index) => (
-              <div
-                key={item._id}
-                className="transform hover:-translate-y-2 transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(251,191,36,0.2)]"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <ItemCard item={item} />
-              </div>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -9,8 +9,10 @@ const {
   getAllItems,
   getLostItems,
   getSingleItem,
+  searchItems,
 } = require("../controllers/itemController");
 
+router.get("/search", searchItems);          // GET /api/items/search
 router.post("/create", protect, upload.single("image"), createItem);
 router.post("/report-lost", protect, upload.single("image"), reportLostItem);
 router.get("/all", getAllItems);

@@ -17,6 +17,10 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
   const [typingName, setTypingName] = useState("");
   const bottomRef = useRef(null);
   const typingDebounce = useRef(null);
+  const isSendingRef = useRef(false);
+  // Keep a ref to the roomId that is currently loaded so async responses
+  // from a previous room cannot overwrite state after the user has switched.
+  const loadedRoomRef = useRef(null);
   const myId = getStoredUserId();
 
   const scrollToBottom = useCallback(() => {
@@ -25,26 +29,74 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
     });
   }, []);
 
-  const loadRoomAndMessages = useCallback(async () => {
-    if (!roomId) return;
-    try {
-      const [roomRes, msgRes] = await Promise.all([
-        API.get(`/chat/${roomId}`),
-        API.get(`/chat/messages/${roomId}`),
-      ]);
-      setMeta(roomRes.data);
-      setMessages(msgRes.data.messages || []);
-      scrollToBottom();
-      await API.post(`/chat/mark-read/${roomId}`);
-      onAfterRead?.();
-    } catch (e) {
-      toast.error(e.response?.data?.message || "Could not load chat");
-    }
-  }, [roomId, scrollToBottom, onAfterRead]);
+  const appendMessage = useCallback((newMsg) => {
+    setMessages((prev) => {
+      if (prev.some((m) => String(m._id) === String(newMsg._id))) return prev;
+      return [...prev, newMsg];
+    });
+  }, []);
+
+  const replaceOptimistic = useCallback((tempId, serverMsg) => {
+    setMessages((prev) => {
+      const withoutTemp = prev.filter((m) => m._id !== tempId);
+      if (withoutTemp.some((m) => String(m._id) === String(serverMsg._id))) {
+        return withoutTemp;
+      }
+      return [...withoutTemp, serverMsg];
+    });
+  }, []);
 
   useEffect(() => {
-    loadRoomAndMessages();
-  }, [loadRoomAndMessages]);
+    // Clear messages immediately when the room changes so stale messages
+    // from the previous conversation are never visible in the new one.
+    setMessages([]);
+    setMeta(null);
+    setTypingName("");
+    loadedRoomRef.current = null;
+
+    if (!roomId) return;
+
+    // Capture which room this effect run is for.
+    const targetRoom = roomId;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const [roomRes, msgRes] = await Promise.all([
+          API.get(`/chat/${targetRoom}`),
+          API.get(`/chat/messages/${targetRoom}`),
+        ]);
+
+        // If the user switched rooms while the request was in-flight, discard.
+        if (cancelled) return;
+
+        setMeta(roomRes.data);
+        // Only accept messages that actually belong to this room.
+        const fetched = (msgRes.data.messages || []).filter(
+          (m) => String(m.chatRoomId) === String(targetRoom)
+        );
+        setMessages(fetched);
+        loadedRoomRef.current = targetRoom;
+        scrollToBottom();
+
+        await API.post(`/chat/mark-read/${targetRoom}`);
+        if (!cancelled) onAfterRead?.();
+      } catch (e) {
+        if (!cancelled) {
+          toast.error(e.response?.data?.message || e.message || "Could not load chat");
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  // onAfterRead is intentionally excluded — it changes on every parent render
+  // and must not re-trigger a full reload. We call it manually inside load().
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, scrollToBottom]);
 
   useEffect(() => {
     if (!roomId || !connected) return undefined;
@@ -61,11 +113,13 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
     if (!socket || !roomId) return undefined;
 
     const onReceive = (msg) => {
-      if (msg.chatRoomId !== roomId && String(msg.chatRoomId) !== String(roomId)) return;
-      setMessages((prev) => {
-        if (prev.some((m) => m._id === msg._id)) return prev;
-        return [...prev, msg];
-      });
+      // Reject messages that don't belong to the currently open room.
+      // Compare as strings because msg.chatRoomId may be an ObjectId object.
+      if (String(msg.chatRoomId) !== String(roomId)) return;
+      // Own messages are handled via optimistic update + send ack — skip socket echo.
+      const senderId = msg.sender?._id || msg.senderId;
+      if (myId && senderId && String(senderId) === String(myId)) return;
+      appendMessage(msg);
       const rid = msg.receiverId || msg.receiver?._id;
       if (rid && myId && String(rid) === String(myId)) {
         socket.emit("seenMessage", { roomId, messageIds: [msg._id] });
@@ -74,13 +128,13 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
     };
 
     const onTyping = (payload) => {
-      if (payload.roomId !== roomId) return;
-      if (payload.userId === myId) return;
+      if (String(payload.roomId) !== String(roomId)) return;
+      if (String(payload.userId) === String(myId)) return;
       setTypingName(payload.userName || "Someone");
     };
 
     const onStop = (payload) => {
-      if (payload.roomId !== roomId) return;
+      if (String(payload.roomId) !== String(roomId)) return;
       setTypingName("");
     };
 
@@ -96,10 +150,10 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
     };
 
     const onSeen = (payload) => {
-      if (payload.chatRoomId !== roomId) return;
+      if (String(payload.chatRoomId) !== String(roomId)) return;
       setMessages((prev) =>
         prev.map((m) =>
-          String(m.senderId) === String(myId) || m.sender?._id === myId
+          String(m.senderId) === String(myId) || String(m.sender?._id) === String(myId)
             ? { ...m, deliveryStatus: "read", isSeen: true }
             : m
         )
@@ -119,34 +173,70 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
       socket.off("messageDelivered", onDelivered);
       socket.off("messagesSeen", onSeen);
     };
-  }, [getSocket, roomId, myId, scrollToBottom]);
+  }, [getSocket, roomId, myId, scrollToBottom, appendMessage]);
 
   const send = async () => {
-    const text = input.trim();
-    if (!text || !roomId) return;
+    const raw = input.trim();
+    if (!raw || !roomId || isSendingRef.current) return;
+    isSendingRef.current = true;
     setInput("");
     emitStopTyping(roomId);
+
+    // Optimistic update — show message immediately, scoped to this room.
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = {
+      _id: tempId,
+      chatRoomId: roomId,   // explicit room scope so dedup checks work
+      senderId: myId,
+      text: raw,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      deliveryStatus: "sent",
+      isSeen: false,
+      sender: { _id: myId },
+      receiver: null,
+    };
+    appendMessage(optimistic);
+
+    const finishSend = () => {
+      isSendingRef.current = false;
+    };
+
     const socket = getSocket();
     if (socket && connected) {
-      socket.emit("sendMessage", { roomId, text }, (ack) => {
+      socket.emit("sendMessage", { roomId, text: raw }, (ack) => {
+        finishSend();
+        if (ack instanceof Error) {
+          setMessages((prev) => prev.filter((m) => m._id !== tempId));
+          toast.error(ack.message || "Send failed");
+          return;
+        }
         if (!ack?.ok) {
+          setMessages((prev) => prev.filter((m) => m._id !== tempId));
           toast.error(ack?.message || "Send failed");
-        } else if (ack.data) {
-          setMessages((prev) => {
-            if (prev.some((m) => m._id === ack.data._id)) return prev;
-            return [...prev, ack.data];
-          });
+          return;
+        }
+        if (ack.data) {
+          if (String(ack.data.chatRoomId) !== String(roomId)) return;
+          replaceOptimistic(tempId, ack.data);
         }
       });
     } else {
       try {
-        const res = await API.post("/chat/send", { chatRoomId: roomId, text });
+        const res = await API.post("/chat/send", { chatRoomId: roomId, text: raw });
         const data = res.data?.data;
-        if (data) {
-          setMessages((prev) => [...prev, data]);
+        if (data && String(data.chatRoomId) === String(roomId)) {
+          replaceOptimistic(tempId, data);
         }
       } catch (e) {
-        toast.error(e.response?.data?.message || "Send failed");
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === tempId ? { ...m, deliveryStatus: "failed" } : m
+          )
+        );
+        toast.error(e.response?.data?.message || e.message || "Send failed");
+      } finally {
+        finishSend();
       }
     }
   };
@@ -174,7 +264,7 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
       <header className="shrink-0 flex items-center gap-3 px-3 py-3 border-b border-[var(--border)] bg-[var(--surface)]">
         <button
           type="button"
-          className="md:hidden p-2 rounded-xl hover:bg-white/10 text-[var(--text)]"
+          className="md:hidden p-2 rounded-xl lm-hover-surface hover:bg-gray-100 dark:hover:bg-white/10 text-[var(--text)]"
           onClick={onBackMobile}
           aria-label="Back to list"
         >

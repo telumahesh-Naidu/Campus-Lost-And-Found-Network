@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Item = require("../models/Item");
 const Claim = require("../models/Claim");
@@ -75,6 +76,9 @@ const getUsers = async (req, res) => {
 
 const banUser = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
     const { reason } = req.body;
     const user = await User.findById(req.params.id);
     if (!user) {
@@ -98,6 +102,9 @@ const banUser = async (req, res) => {
 
 const unbanUser = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -125,6 +132,9 @@ const getModerationItems = async (req, res) => {
 
 const removeItem = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid item ID" });
+    }
     const { reason } = req.body;
     const item = await Item.findById(req.params.id);
     if (!item) {
@@ -144,6 +154,9 @@ const removeItem = async (req, res) => {
 
 const restoreItem = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid item ID" });
+    }
     const item = await Item.findByIdAndUpdate(
       req.params.id,
       {

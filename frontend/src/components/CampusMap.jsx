@@ -27,13 +27,13 @@ function CampusMap({ selectedLocation, onSelectLocation, buildings }) {
         }))
       : locations;
   return (
-    <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden group">
+    <div className="bg-gray-50 backdrop-blur-xl border border-gray-200 rounded-2xl p-6 shadow-lg relative overflow-hidden group dark:bg-slate-900/50 dark:border-white/10 dark:shadow-2xl">
       <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-2xl blur-lg group-hover:opacity-100 transition duration-500 opacity-50"></div>
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FiMapPin className="text-cyan-400 text-lg animate-pulse" />
-            <h4 className="font-bold text-white text-sm tracking-wide">Interactive Campus Map</h4>
+            <h4 className="font-bold text-gray-900 dark:text-white text-sm tracking-wide">Interactive Campus Map</h4>
           </div>
           <span className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-full font-semibold uppercase">
             Click to Tag
@@ -41,7 +41,7 @@ function CampusMap({ selectedLocation, onSelectLocation, buildings }) {
         </div>
 
         {/* Dynamic Stylized Interactive SVG */}
-        <div className="relative w-full aspect-[4/3] bg-slate-950/80 border border-white/5 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
+        <div className="relative w-full aspect-[4/3] bg-gray-100 border border-gray-200 rounded-xl overflow-hidden shadow-inner flex items-center justify-center dark:bg-slate-950/80 dark:border-white/5">
           
           {/* Map Grid / Gridlines */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
@@ -81,7 +81,7 @@ function CampusMap({ selectedLocation, onSelectLocation, buildings }) {
                   className={`relative w-full h-full rounded-xl border flex flex-col items-center justify-center p-1 transition-all duration-300 ${
                     isSelected
                       ? "bg-cyan-500/20 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
-                      : "bg-slate-900/60 border-white/10 hover:border-cyan-500/40 hover:bg-slate-900/90"
+                      : "bg-white border-gray-200 text-gray-600 hover:border-cyan-400/60 hover:bg-cyan-50 dark:bg-slate-900/60 dark:border-white/10 dark:hover:border-cyan-500/40 dark:hover:bg-slate-900/90"
                   }`}
                 >
                   {/* Outer Pulsing Glow for Selected Item */}
@@ -111,8 +111,8 @@ function CampusMap({ selectedLocation, onSelectLocation, buildings }) {
         </div>
 
         {/* Selected Status Overlay */}
-        <div className="mt-4 flex items-center gap-3 bg-white/5 border border-white/5 rounded-xl p-3 text-xs text-gray-400 transition-all duration-300">
-          <span className="font-semibold text-gray-300">Tagged:</span>
+        <div className="mt-4 flex items-center gap-3 bg-gray-100 border border-gray-200 rounded-xl p-3 text-xs text-gray-500 transition-all duration-300 dark:bg-white/5 dark:border-white/5 dark:text-gray-400">
+          <span className="font-semibold text-gray-600 dark:text-gray-300">Tagged:</span>
           {selectedLocation ? (
             <span className="text-cyan-400 font-bold flex items-center gap-1.5 animate-fade-in">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>

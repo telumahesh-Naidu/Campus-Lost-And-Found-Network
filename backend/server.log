@@ -1,0 +1,6 @@
+◇ injected env (5) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+MongoDB Connected: ac-kg1deem-shard-00-00.l0exuhe.mongodb.net
+Server running on port 5000
+Auth API: http://127.0.0.1:5000/api/auth
+Chat API: http://127.0.0.1:5000/api/chat
+Socket.io ready (JWT on connect)

@@ -193,10 +193,10 @@ function ReportLostItem() {
         {/* Privacy Blur Toggle */}
         <motion.div
           variants={itemVariants}
-          className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 flex items-center justify-between gap-4"
+          className="bg-gray-100 border border-gray-200 rounded-2xl p-5 flex items-center justify-between gap-4 dark:bg-slate-900/40 dark:border-white/10"
         >
           <div className="flex-1">
-            <h4 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+            <h4 className="text-gray-900 dark:text-white font-bold text-sm flex items-center gap-2 mb-1">
               <FiEyeOff className="text-amber-400" />
               Privacy Image Blurring
             </h4>
@@ -266,10 +266,10 @@ function ReportLostItem() {
                   key={cat.id}
                   type="button"
                   onClick={() => handleCategorySelect(cat)}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-300 gap-2 ${
+                  className={`category-btn flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-300 gap-2 ${
                     isSelected
-                      ? "bg-amber-500/10 border-amber-400 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
-                      : "bg-slate-900/40 border-white/10 text-gray-400 hover:border-white/20 hover:text-white"
+                      ? "category-btn--active bg-teal-50 border-teal-500 text-teal-800 shadow-[0_0_15px_rgba(29,158,117,0.12)] dark:bg-amber-500/10 dark:border-amber-400 dark:text-amber-400 dark:shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                      : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-teal-50 hover:text-teal-800 hover:border-teal-200 dark:bg-slate-900/40 dark:border-white/10 dark:text-gray-400 dark:hover:border-white/20 dark:hover:text-white"
                   }`}
                 >
                   <span className="text-xl">

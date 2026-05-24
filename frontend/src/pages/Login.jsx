@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import API from "../services/api";
-import { setAuthSession } from "../utils/authStorage";
+import { useAuth } from "../context/AuthContext";
 import FormLayout from "../components/FormLayout";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn, FiUserPlus } from "react-icons/fi";
 
@@ -27,7 +28,7 @@ const itemVariants = {
 };
 
 function Login() {
-  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -49,17 +50,21 @@ function Login() {
 
     try {
       setLoading(true);
+      console.log("[Login] Sending login request for:", formData.email);
+
       const res = await API.post("/auth/login", {
         ...formData,
         email: formData.email.trim().toLowerCase(),
       });
 
-      setAuthSession({ token: res.data.token, user: res.data.user });
+      console.log("[Login] Login response received, storing token");
 
-      alert("Login Successful ✅ ");
-      navigate("/home");
+      login(res.data.token, res.data.user);
+
+      toast.success("Login Successful");
     } catch (error) {
-      alert(error.response?.data?.message || "Login Failed ❌");
+      console.error("[Login] Login failed:", error.response?.data || error.message);
+      toast.error(error.response?.data?.message || "Login Failed");
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../../services/api";
 import toast from "react-hot-toast";
@@ -74,7 +74,7 @@ function AdminDashboard() {
     setBuildings(buildingRes.data);
   };
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       if (tab === "overview") await loadOverview();
@@ -86,11 +86,11 @@ function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tab]);
 
   useEffect(() => {
     refresh();
-  }, [tab]);
+  }, [refresh]);
 
   const handleBan = async (userId) => {
     const reason = window.prompt("Ban reason (optional):") || "Policy violation";

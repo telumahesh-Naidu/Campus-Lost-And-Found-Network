@@ -1,100 +1,86 @@
-import { useEffect, useState } from "react";
+import { Search, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
-import API from "../services/api";
-import ItemCard from "../components/ItemCard";
-import SearchBar from "../components/SearchBar";
-import { FiPackage } from "react-icons/fi";
+import AdvancedSearch from "../components/AdvancedSearch";
+import ItemGrid from "../components/ItemGrid";
+import { useItemSearch } from "../hooks/useItemSearch";
+
+// type is locked to "found" via overrides — users cannot change it
+const OVERRIDES = { type: "found" };
 
 function FoundItems() {
-  const [items, setItems] = useState([]);
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    fetchFoundItems();
-  }, []);
-
-  const fetchFoundItems = async () => {
-    try {
-      const res = await API.get("/items/all");
-      const foundItems = res.data.filter((item) => item.type === "found");
-      setItems(foundItems);
-    } catch (error) {
-      console.error(error);
-      setItems([]);
-    }
-  };
-
-  const filteredItems = items.filter((item) =>
-    item.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const {
+    filters, updateFilter, resetFilters, hasActiveFilters,
+    items, total, totalPages, page, setPage, loading, error,
+  } = useItemSearch(OVERRIDES);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-950 via-blue-950/40 to-black text-white px-6 pt-28 pb-20 relative overflow-hidden">
-      <div className="absolute top-[10%] right-[-5%] w-100 h-100 bg-cyan-500/10 blur-[120px] rounded-full pointer-events-none" />
+    <div className="item-page min-h-screen bg-gradient-to-br from-[#f4f7fb] via-cyan-50/50 to-white dark:from-slate-950 dark:via-cyan-950/20 dark:to-black text-gray-900 dark:text-white px-4 sm:px-6 pt-24 pb-20 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute top-[10%] right-[-5%] w-[400px] h-[400px] bg-cyan-400/10 dark:bg-cyan-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[20%] left-[-5%] w-[300px] h-[300px] bg-teal-400/8 dark:bg-teal-500/8 blur-[100px] rounded-full pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto z-10 relative">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-5 border-b border-white/10 pb-6">
-          <div>
-            <h2 className="text-4xl font-bold bg-linear-to-r from-cyan-300 to-teal-400 bg-clip-text text-transparent flex items-center gap-3">
-              <FiPackage className="text-cyan-400 shrink-0" aria-hidden />
-              Found items
-            </h2>
-            <p className="text-cyan-400/80 mt-2 font-medium tracking-wide text-sm uppercase">
-              Browse items someone found on campus — help reunite them with owners
-            </p>
-          </div>
-
-          <div className="w-full md:w-96 relative group">
-            <div className="absolute -inset-1 bg-linear-to-r from-cyan-400 to-teal-500 rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
-            <div className="relative">
-              <SearchBar search={search} setSearch={setSearch} />
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Page header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-9 h-9 rounded-xl bg-cyan-100 dark:bg-cyan-500/15 border border-cyan-200 dark:border-cyan-500/20 flex items-center justify-center">
+                  <Search size={18} className="text-cyan-600 dark:text-cyan-400" />
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-700 to-teal-600 dark:from-cyan-300 dark:to-teal-400 bg-clip-text text-transparent">
+                  Found Items
+                </h1>
+              </div>
+              <p className="text-gray-500 dark:text-white/40 text-sm ml-12">
+                Items found on campus — help reunite them with their owners
+              </p>
             </div>
+            <Link
+              to="/post-item"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-100 dark:bg-cyan-500/15 border border-cyan-200 dark:border-cyan-500/25 text-cyan-700 dark:text-cyan-300 text-sm font-medium hover:bg-cyan-200 dark:hover:bg-cyan-500/25 transition-all"
+            >
+              <Plus size={15} />
+              Post found item
+            </Link>
           </div>
         </div>
 
-        <p className="text-gray-400 text-sm mb-8 max-w-2xl">
-          When someone posts something they found, it appears here so others can recognize it.
-          {" "}
-          <Link to="/post-item" className="text-cyan-400 hover:underline font-medium">
+        {/* Advanced search — hideTypeFilter since page is already scoped */}
+        <div className="mb-8">
+          <AdvancedSearch
+            filters={filters}
+            updateFilter={updateFilter}
+            resetFilters={resetFilters}
+            hasActiveFilters={hasActiveFilters}
+            total={total}
+            loading={loading}
+            hideTypeFilter
+          />
+        </div>
+
+        {/* Item grid */}
+        <ItemGrid
+          items={items}
+          loading={loading}
+          error={error}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          hasFilters={hasActiveFilters}
+          emptyMessage="No found items have been posted yet."
+        />
+
+        {/* Mobile post CTA */}
+        <div className="sm:hidden mt-8 text-center">
+          <Link
+            to="/post-item"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-100 dark:bg-cyan-500/15 border border-cyan-200 dark:border-cyan-500/25 text-cyan-700 dark:text-cyan-300 text-sm font-medium"
+          >
+            <Plus size={15} />
             Post a found item
           </Link>
-        </p>
-
-        {filteredItems.length === 0 ? (
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-20 text-center shadow-2xl relative overflow-hidden group mt-4">
-            <div className="absolute inset-0 bg-linear-to-br from-cyan-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,255,255,0.05)]">
-                <FiPackage className="text-4xl text-cyan-400 opacity-80" aria-hidden />
-              </div>
-              <h3 className="text-3xl font-bold text-white mb-3">No found items yet</h3>
-              <p className="text-gray-400 max-w-md mx-auto mb-6">
-                {search
-                  ? "No found items match your search."
-                  : "When users post something they found, it will show up here."}
-              </p>
-              <Link
-                to="/post-item"
-                className="inline-flex items-center gap-2 bg-linear-to-r from-cyan-500 to-teal-600 hover:from-cyan-400 hover:to-teal-500 text-black font-bold px-6 py-3 rounded-xl transition-all"
-              >
-                <FiPackage aria-hidden />
-                Post found item
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredItems.map((item, index) => (
-              <div
-                key={item._id}
-                className="transform hover:-translate-y-2 transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(6,182,212,0.25)]"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <ItemCard item={item} />
-              </div>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

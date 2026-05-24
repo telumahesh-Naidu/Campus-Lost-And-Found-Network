@@ -1,13 +1,13 @@
 const User = require("../models/User");
 const Otp = require("../models/otp");
+const Item = require("../models/Item");
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const generateOTP = require("../utils/generateOtp");
-const sendEmail = require("../config/email");
+const sendOTPEmail = require("../config/email");
 
-/** Case-insensitive email match (no collation — works on all MongoDB tiers). */
 const matchEmailCI = (lowerEmail) => ({
   $expr: { $eq: [{ $toLower: "$email" }, lowerEmail] },
 });
@@ -17,6 +17,8 @@ const matchEmailCI = (lowerEmail) => ({
 
 const registerUser = async (req, res) => {
   try {
+    console.log("Registration request body:", req.body);
+
     const name =
       typeof req.body.name === "string" ? req.body.name.trim() : "";
     const password =
@@ -43,9 +45,16 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Department is required" });
     }
 
-    const userExists = await User.findOne({ email });
+    const verifiedOtp = await Otp.findOne({ email, purpose: "registration", used: true });
+    if (!verifiedOtp) {
+      return res.status(400).json({
+        message: "Email not verified. Please complete OTP verification first.",
+      });
+    }
 
+    const userExists = await User.findOne({ email });
     if (userExists) {
+      await Otp.deleteMany({ email, purpose: "registration" });
       return res.status(400).json({
         message: "User already exists with this email",
       });
@@ -58,7 +67,12 @@ const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       department,
+      isVerified: true,
     });
+
+    await Otp.deleteMany({ email, purpose: "registration" });
+
+    console.log("User registered successfully:", email);
 
     res.status(201).json({
       message: "User registered successfully",
@@ -68,6 +82,8 @@ const registerUser = async (req, res) => {
     console.error("registerUser error:", error);
 
     if (error.code === 11000) {
+      const dupEmail = error?.keyValue?.email;
+      if (dupEmail) await Otp.deleteMany({ email: dupEmail, purpose: "registration" });
       return res.status(400).json({
         message: "User already exists with this email",
       });
@@ -139,6 +155,7 @@ const loginUser = async (req, res) => {
 
 const sendOTP = async (req, res) => {
   try {
+    console.log("sendOTP request body:", req.body);
 
     const email =
       typeof req.body.email === "string" ? req.body.email.trim() : req.body.email;
@@ -152,80 +169,51 @@ const sendOTP = async (req, res) => {
     const userExists = await User.findOne(matchEmailCI(emailKey));
     if (userExists) {
       return res.status(400).json({
-        message: "An account with this email already exists",
+        message: "An account with this email already exists. Please log in.",
       });
     }
 
-    // Generate OTP
+    // Rate-limit: one OTP per email per 60 seconds
+    const recentOtp = await Otp.findOne({ email: emailKey, purpose: "registration", used: false });
+    if (recentOtp) {
+      const ageMs = Date.now() - new Date(recentOtp._id.getTimestamp()).getTime();
+      if (ageMs < 60_000) {
+        return res.status(429).json({
+          message: "Please wait 1 minute before requesting another OTP.",
+        });
+      }
+      await Otp.deleteMany({ email: emailKey, purpose: "registration" });
+    }
+
     const otp = String(generateOTP());
 
-    // Delete old OTP
-    await Otp.deleteMany({ email: emailKey });
-
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-    await Otp.create({
+    // Store plaintext OTP — expires in 5 minutes, single-use
+    const otpRecord = await Otp.create({
       email: emailKey,
       code: otp,
-      expiresAt,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      purpose: "registration",
     });
-
-    console.log(`🔑 OTP for ${emailKey}: ${otp}`);
-
-    const mailConfigured =
-      typeof process.env.EMAIL_USER === "string" &&
-      process.env.EMAIL_USER.trim() &&
-      typeof process.env.EMAIL_PASS === "string" &&
-      process.env.EMAIL_PASS.trim();
-
-    // No SMTP creds — skip mail (avoids long hangs / opaque failures) and return OTP to the client for dev.
-    if (!mailConfigured) {
-      console.log(
-        "📧 EMAIL_USER / EMAIL_PASS not set — skipping email; OTP is included in the API response."
-      );
-      return res.status(200).json({
-        message:
-          "OTP generated (email is not configured on the server). Use the code below or ask your admin to set EMAIL_USER and EMAIL_PASS.",
-        otp,
-      });
-    }
 
     try {
-      await sendEmail(
-        emailKey,
-        "Campus Lost & Found - OTP Verification",
-        `
-        <div style="font-family: Arial; padding:20px;">
-          <h2>Email Verification</h2>
-          <p>Your OTP is:</p>
-  
-          <h1 style="letter-spacing:5px; color:#2563eb;">
-            ${otp}
-          </h1>
-  
-          <p>This OTP will expire in 5 minutes.</p>
-        </div>
-        `
-      );
-
-      return res.status(200).json({
-        message: "OTP Sent Successfully ✅",
-      });
-    } catch (emailError) {
-      console.log(`⚠️ SMTP Mail Delivery failed: ${emailError.message}`);
-      console.log(`💡 Local Fallback: OTP for ${emailKey} is: ${otp}`);
-
-      return res.status(200).json({
-        message: `OTP generated (email could not be sent). Use the code below or check the server console.`,
-        otp,
+      await sendOTPEmail(emailKey, otp);
+      console.log("✅ OTP sent successfully to", emailKey);
+      return res.status(200).json({ message: "OTP sent to your email" });
+    } catch (mailErr) {
+      console.error("=== OTP EMAIL ERROR ===");
+      console.error("Message :", mailErr.message);
+      console.error("Code    :", mailErr.code ?? "none");
+      console.error("Stack   :", mailErr.stack);
+      await Otp.deleteOne({ _id: otpRecord._id });
+      return res.status(500).json({
+        message: "Failed to send OTP email. Please try again.",
+        debug: mailErr.message,
       });
     }
+
   } catch (error) {
     console.error("sendOTP error:", error);
-
-    res.status(500).json({
-      message: error.message || "Failed to Send OTP",
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -234,6 +222,7 @@ const sendOTP = async (req, res) => {
 
 const verifyOTP = async (req, res) => {
   try {
+    console.log("verifyOTP request body:", { email: req.body.email, otp: req.body.otp ? "***" : undefined });
 
     const email =
       typeof req.body.email === "string" ? req.body.email.trim() : req.body.email;
@@ -242,45 +231,123 @@ const verifyOTP = async (req, res) => {
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
+    if (!otp) {
+      return res.status(400).json({ message: "OTP is required" });
+    }
 
     const emailKey = email.trim().toLowerCase();
-    const otpStr = otp != null ? String(otp).trim() : "";
+    const otpStr = String(otp).trim();
 
-    // Master OTP bypass for development/testing ease
-    if (otpStr === "123456") {
-      await Otp.deleteMany({ email: emailKey });
-      return res.status(200).json({
-        message: "OTP Verified Successfully",
-      });
+    if (otpStr.length !== 6 || isNaN(otpStr)) {
+      return res.status(400).json({ message: "OTP must be a 6-digit number" });
     }
 
-    const existingOTP = await Otp.findOne({ email: emailKey });
+    const existingOTP = await Otp.findOne({ email: emailKey, purpose: "registration", used: false });
 
-    if (!existingOTP || String(existingOTP.code) !== otpStr) {
-      return res.status(400).json({
-        message: "Invalid OTP",
-      });
+    if (!existingOTP) {
+      return res.status(400).json({ message: "OTP not found. Please request a new one." });
     }
 
-    if (existingOTP.expiresAt && existingOTP.expiresAt < new Date()) {
-      await Otp.deleteMany({ email: emailKey });
-      return res.status(400).json({
-        message: "OTP has expired. Please request a new code.",
-      });
+    if (existingOTP.expiresAt < new Date()) {
+      await Otp.deleteMany({ email: emailKey, purpose: "registration" });
+      return res.status(400).json({ message: "OTP expired. Please request a new code." });
     }
 
-    // Delete OTP after verification
-    await Otp.deleteMany({ email: emailKey });
+    // Direct plaintext comparison — no hashing
+    if (existingOTP.code !== otpStr) {
+      return res.status(400).json({ message: "Invalid OTP. Please check and try again." });
+    }
 
-    res.status(200).json({
-      message: "OTP Verified Successfully",
-    });
+    await Otp.updateOne(
+      { _id: existingOTP._id },
+      { $set: { used: true, verifiedAt: new Date() } }
+    );
+
+    res.status(200).json({ message: "OTP verified successfully" });
 
   } catch (error) {
+    console.error("verifyOTP error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
-    res.status(500).json({
-      message: error.message,
+
+// ================= EXPORTS =================
+
+// ================= GET PROFILE =================
+
+const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Graceful post count — don't fail the profile if the Item query errors out
+    let postCount = 0;
+    try {
+      postCount = await Item.countDocuments({
+        postedBy: req.user,
+        isRemoved: { $ne: true },
+      });
+    } catch (countErr) {
+      console.warn("postCount query failed (non-fatal):", countErr.message);
+    }
+
+    res.json({ ...user.toJSON(), postCount });
+  } catch (error) {
+    console.error("getProfile error:", error);
+
+    // Differentiate error types for better frontend UX
+    if (error.name === "CastError") {
+      return res.status(400).json({ message: "Invalid user ID format." });
+    }
+    if (error.name === "MongooseError" || error.name === "MongoNetworkError") {
+      return res.status(503).json({ message: "Unable to connect to profile service." });
+    }
+
+    res.status(500).json({ message: "Failed to load profile" });
+  }
+};
+
+
+// ================= UPDATE PROFILE =================
+
+const updateProfile = async (req, res) => {
+  try {
+    // Only allow safe fields — never let the client change email, password, or role here
+    const { name, rollNumber, department, phone, github, linkedin } = req.body;
+
+    const updates = {};
+    if (name      !== undefined) updates.name       = String(name).trim();
+    if (rollNumber !== undefined) updates.rollNumber = String(rollNumber).trim();
+    if (department !== undefined) updates.department = String(department).trim();
+    if (phone      !== undefined) updates.phone      = String(phone).trim();
+    if (github     !== undefined) updates.github     = String(github).trim();
+    if (linkedin   !== undefined) updates.linkedin   = String(linkedin).trim();
+
+    const user = await User.findByIdAndUpdate(
+      req.user,
+      { $set: updates },
+      { returnDocument: "after", runValidators: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const postCount = await Item.countDocuments({
+      postedBy: req.user,
+      isRemoved: { $ne: true },
     });
+
+    console.log("Profile updated for:", user.email, updates);
+
+    res.json({ ...user.toJSON(), postCount });
+  } catch (error) {
+    console.error("updateProfile error:", error);
+    res.status(500).json({ message: "Failed to update profile" });
   }
 };
 
@@ -292,4 +359,6 @@ module.exports = {
   loginUser,
   sendOTP,
   verifyOTP,
+  getProfile,
+  updateProfile,
 };

@@ -23,10 +23,34 @@ const userSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    rollNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    github: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    linkedin: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     role: {
       type: String,
       enum: ["user", "admin"],
       default: "user",
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
     isBanned: {
       type: Boolean,

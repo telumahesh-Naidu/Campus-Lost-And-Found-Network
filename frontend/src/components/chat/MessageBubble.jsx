@@ -23,6 +23,8 @@ function DeliveryTicks({ isOwn, deliveryStatus }) {
 }
 
 export default function MessageBubble({ message, isOwn }) {
+  if (!message) return null;
+
   const name = message.sender?.name || "User";
   const time = formatTime(message.timestamp || message.createdAt);
 
@@ -38,7 +40,7 @@ export default function MessageBubble({ message, isOwn }) {
         {!isOwn ? (
           <p className="text-[11px] font-semibold text-cyan-500 mb-0.5">{name}</p>
         ) : null}
-        <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+        <p className="text-sm whitespace-pre-wrap break-words">{message.text || message.content || message.body || message.message || ""}</p>
         <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isOwn ? "text-emerald-100/90" : "text-[var(--text-muted)]"}`}>
           <span>{time}</span>
           <DeliveryTicks isOwn={isOwn} deliveryStatus={message.deliveryStatus} />

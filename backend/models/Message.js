@@ -64,11 +64,10 @@ const messageSchema = new mongoose.Schema(
 messageSchema.index({ chatRoomId: 1, createdAt: -1 });
 messageSchema.index({ chatRoomId: 1, receiverId: 1, isSeen: 1 });
 
-messageSchema.pre("save", function syncTimestamp(next) {
+messageSchema.pre("save", function() {
   if (this.isNew) {
     this.timestamp = this.createdAt || new Date();
   }
-  next();
 });
 
 module.exports = mongoose.model("Message", messageSchema);

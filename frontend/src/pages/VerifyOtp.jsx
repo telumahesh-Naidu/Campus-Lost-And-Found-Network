@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import API from "../services/api";
 
 const containerVariants = {
@@ -40,47 +41,27 @@ function VerifyOTP() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false);
-  const [isDevMode, setIsDevMode] = useState(false);
-  const [devOtpCode, setDevOtpCode] = useState("");
 
-  // Check for fallback/dev OTP on mount
-  useEffect(() => {
-    const fallbackOtp = localStorage.getItem("devOTP");
-    if (fallbackOtp && fallbackOtp.length === 6) {
-      setIsDevMode(true);
-      setDevOtpCode(fallbackOtp);
-      setOtp(fallbackOtp.split(""));
-    }
-  }, []);
-
-  // Countdown Timer
   useEffect(() => {
     if (timer > 0) {
       const countdown = setTimeout(() => {
         setTimer(timer - 1);
       }, 1000);
-
       return () => clearTimeout(countdown);
     }
   }, [timer]);
 
-  // Handle OTP Input
   const handleChange = (value, index) => {
     if (isNaN(value)) return;
-
     const newOtp = [...otp];
     newOtp[index] = value.substring(value.length - 1);
-
     setOtp(newOtp);
-
-    // Auto Focus Next Input
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       if (nextInput) nextInput.focus();
     }
   };
 
-  // Handle Backspace
   const handleKeyDown = (e, index) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       const prevInput = document.getElementById(`otp-${index - 1}`);
@@ -88,20 +69,19 @@ function VerifyOTP() {
     }
   };
 
-  // Verify OTP
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const enteredOTP = otp.join("");
 
     if (enteredOTP.length !== 6) {
-      return alert("Please enter the complete 6-digit OTP");
+      return toast.error("Please enter the complete 6-digit OTP");
     }
 
     const registerData = readRegisterData();
 
     if (!registerData || !registerData.email) {
-      alert("Registration data missing. Please register again.");
+      toast.error("Registration data missing. Please register again.");
       return navigate("/register");
     }
 
@@ -110,7 +90,8 @@ function VerifyOTP() {
     try {
       setLoading(true);
 
-      // Verify OTP with Backend
+      console.log("Verifying OTP for:", registerData.email);
+
       await API.post("/auth/verify-otp", {
         email: registerData.email.trim().toLowerCase(),
         otp: enteredOTP,
@@ -118,62 +99,55 @@ function VerifyOTP() {
 
       isOtpVerified = true;
 
-      // Register User
+      console.log("OTP verified. Registering user:", registerData.email);
+
       await API.post("/auth/register", {
         ...registerData,
         email: registerData.email.trim().toLowerCase(),
       });
 
-      alert("Registration Successful ✅");
-      localStorage.removeItem("registerData");
-      localStorage.removeItem("devOTP");
+      console.log("Registration successful for:", registerData.email);
 
+      toast.success("Email verified! Account created successfully");
+      localStorage.removeItem("registerData");
       navigate("/login");
 
     } catch (error) {
+      console.error("Verify/Register error:", error);
+      const msg = error.response?.data?.message || "Something went wrong";
       if (!isOtpVerified) {
-        alert(error.response?.data?.message || "Invalid OTP ❌");
+        toast.error(msg);
       } else {
-        alert(error.response?.data?.message || "Registration failed. Please try again. ❌");
+        toast.error(msg);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // Resend OTP
   const resendOTP = async () => {
     const registerData = readRegisterData();
 
     if (!registerData || !registerData.email) {
-      alert("Registration data missing. Please register again.");
+      toast.error("Registration data missing. Please register again.");
       return navigate("/register");
     }
 
     try {
       setLoading(true);
 
-      const res = await API.post("/auth/send-otp", {
+      console.log("Resending OTP for:", registerData.email);
+
+      await API.post("/auth/send-otp", {
         email: registerData.email.trim().toLowerCase(),
       });
 
-      if (res.data.otp) {
-        localStorage.setItem("devOTP", res.data.otp);
-        setIsDevMode(true);
-        setDevOtpCode(res.data.otp);
-        setOtp(res.data.otp.split(""));
-      } else {
-        localStorage.removeItem("devOTP");
-        setIsDevMode(false);
-        setDevOtpCode("");
-        setOtp(["", "", "", "", "", ""]);
-      }
+      toast.success("New OTP sent to your email");
 
-      alert(res.data.message || "New OTP Sent ✅");
       setTimer(60);
 
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to resend OTP");
+      toast.error(error.response?.data?.message || "Failed to resend OTP");
     } finally {
       setLoading(false);
     }
@@ -240,33 +214,10 @@ function VerifyOTP() {
             transition={{ duration: 0.45, delay: 0.22 }}
             className="text-gray-300 mt-3"
           >
-            Enter the 6-digit verification code sent to your email
+            Enter the 6-digit code sent to your email
           </motion.p>
-        </div>
 
-        {/* Development Fallback Banner */}
-        {isDevMode && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, y: -10 }}
-            animate={{ opacity: 1, height: "auto", y: 0 }}
-            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            className="mt-6 p-4 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-sm flex flex-col gap-1 items-center text-center shadow-lg"
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-cyan-400">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-              Development Fallback Active
-            </div>
-            <p className="text-gray-200">
-              SMTP service is offline. We've auto-filled the OTP:
-            </p>
-            <span className="font-mono text-lg font-bold text-white tracking-widest bg-cyan-950/60 px-3 py-1 rounded-lg border border-cyan-500/30">
-              {devOtpCode}
-            </span>
-            <p className="text-gray-300 text-xs mt-1 text-center">
-              You can also use the Master OTP: <code className="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono font-bold">123456</code>
-            </p>
-          </motion.div>
-        )}
+        </div>
 
         {/* OTP Form */}
         <form onSubmit={handleSubmit} className="mt-10">

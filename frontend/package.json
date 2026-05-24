@@ -10,12 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@paper-design/shaders-react": "^0.0.76",
+    "@radix-ui/react-slot": "^1.2.4",
     "@tailwindcss/vite": "^4.3.0",
     "axios": "^1.16.1",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.39.0",
-    "nodemailer": "^8.0.7",
-    "otp-generator": "^4.0.1",
+    "lucide-react": "^1.16.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-hot-toast": "^2.6.0",
