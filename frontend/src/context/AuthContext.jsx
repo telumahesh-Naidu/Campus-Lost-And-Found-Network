@@ -45,6 +45,10 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const updateUser = (updatedFields) => {
+    setUser((prev) => ({ ...prev, ...updatedFields }));
+  };
+
   const value = useMemo(() => ({
     user,
     token,
@@ -52,6 +56,7 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     login,
     logout,
+    updateUser,
     isAdmin: () => user?.role === "admin" || getStoredUserRole() === "admin",
   }), [user, token, loading, isAuthenticated]);
 

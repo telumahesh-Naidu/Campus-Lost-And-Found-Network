@@ -8,7 +8,8 @@ import {
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import API from "../services/api";
+import API, { assetUrl } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import { updateStoredUserProfile } from "../utils/authStorage";
 import SocialLink from "../components/SocialLink";
 import ProfileHeader from "../components/profile/ProfileHeader";
@@ -132,7 +133,9 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 /* ── Main Profile Page ───────────────────────────────────────────── */
 function Profile() {
   const navigate = useNavigate();
+  const { updateUser } = useAuth();
   const [profileImage, setProfileImage] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [user, setUser] = useState(EMPTY_USER);
   const [editData, setEditData] = useState({ name: "", rollNumber: "", department: "", phone: "", github: "", linkedin: "" });
   const [notifications, setNotifications] = useState(() => {
@@ -162,6 +165,10 @@ function Profile() {
       name: data.name || "", rollNumber: data.rollNumber || "", department: data.department || "",
       phone: data.phone || "", github: data.github || "", linkedin: data.linkedin || "",
     });
+    // Restore saved profile image from the server (persists across refreshes)
+    if (data.profileImage) {
+      setProfileImage(assetUrl(data.profileImage));
+    }
   }, []);
 
   const fetchProfile = useCallback(async (isRetry = false) => {
@@ -207,9 +214,41 @@ function Profile() {
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchProfile]);
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) setProfileImage(URL.createObjectURL(file));
+    if (!file) return;
+
+    // Show local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setProfileImage(localUrl);
+    setUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("profileImage", file);
+
+      const res = await API.put("/auth/profile/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // Replace local blob URL with the permanent server-stored URL
+      const savedUrl = assetUrl(res.data.profileImage);
+      setProfileImage(savedUrl);
+
+      // Keep AuthContext in sync so any navbar avatar also updates
+      updateUser({ profileImage: res.data.profileImage });
+
+      toast.success("Profile image updated!");
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      toast.error(err.response?.data?.message || "Failed to upload image");
+      // Revert to whatever was saved before (null if first upload)
+      setProfileImage((prev) => (prev === localUrl ? null : prev));
+    } finally {
+      setUploadingImage(false);
+      // Release the temporary object URL to free memory
+      URL.revokeObjectURL(localUrl);
+    }
   };
 
   const handleInputChange = (e) => { setEditData((prev) => ({ ...prev, [e.target.name]: e.target.value })); };
@@ -347,7 +386,7 @@ function Profile() {
           </motion.div>
         </div>
 
-        <ProfileHeader user={user} profileImage={profileImage} onImageUpload={handleImageUpload} greeting={greeting} />
+        <ProfileHeader user={user} profileImage={profileImage} onImageUpload={handleImageUpload} greeting={greeting} uploadingImage={uploadingImage} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
           <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">

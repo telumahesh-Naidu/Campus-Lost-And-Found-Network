@@ -28,6 +28,7 @@ function safeUser(u) {
     _id: u._id,
     name: u.name,
     department: u.department || "",
+    profileImage: u.profileImage || null,
   };
 }
 
@@ -69,7 +70,7 @@ const createRoom = async (req, res) => {
 
     const otherId =
       finderId.toString() === req.user.toString() ? claimantId : finderId;
-    const other = await User.findById(otherId).select("name department");
+    const other = await User.findById(otherId).select("name department profileImage");
 
     res.status(200).json({
       room: {
@@ -96,7 +97,7 @@ const getRoom = async (req, res) => {
     const item = await Item.findById(room.lostItemId).select("title type status");
 
     const otherId = room.participants.find((p) => p.toString() !== req.user.toString());
-    const other = await User.findById(otherId).select("name department");
+    const other = await User.findById(otherId).select("name department profileImage");
 
     const unread = await Message.countDocuments({
       chatRoomId: room._id,
@@ -140,8 +141,8 @@ const getMessages = async (req, res) => {
     const messages = await Message.find(query)
       .sort({ _id: -1 })
       .limit(limit)
-      .populate("senderId", "name department")
-      .populate("receiverId", "name department")
+      .populate("senderId", "name department profileImage")
+      .populate("receiverId", "name department profileImage")
       .lean();
 
     const chronological = [...messages].reverse();
@@ -156,8 +157,8 @@ const getMessages = async (req, res) => {
       deliveryStatus: m.deliveryStatus,
       deliveredAt: m.deliveredAt,
       seenAt: m.seenAt,
-      sender: m.senderId ? { _id: m.senderId._id, name: m.senderId.name } : null,
-      receiver: m.receiverId ? { _id: m.receiverId._id, name: m.receiverId.name } : null,
+      sender: m.senderId ? { _id: m.senderId._id, name: m.senderId.name, profileImage: m.senderId.profileImage || null } : null,
+      receiver: m.receiverId ? { _id: m.receiverId._id, name: m.receiverId.name, profileImage: m.receiverId.profileImage || null } : null,
     }));
 
     res.json({
@@ -200,8 +201,8 @@ async function persistAndBroadcastMessage({ io, room, senderId, text }) {
   });
 
   const populated = await Message.findById(msg._id)
-    .populate("senderId", "name department")
-    .populate("receiverId", "name department")
+    .populate("senderId", "name department profileImage")
+    .populate("receiverId", "name department profileImage")
     .lean();
 
   const payload = {
@@ -215,10 +216,10 @@ async function persistAndBroadcastMessage({ io, room, senderId, text }) {
     isSeen: populated.isSeen,
     deliveryStatus: populated.deliveryStatus,
     sender: populated.senderId
-      ? { _id: populated.senderId._id, name: populated.senderId.name }
+      ? { _id: populated.senderId._id, name: populated.senderId.name, profileImage: populated.senderId.profileImage || null }
       : null,
     receiver: populated.receiverId
-      ? { _id: populated.receiverId._id, name: populated.receiverId.name }
+      ? { _id: populated.receiverId._id, name: populated.receiverId.name, profileImage: populated.receiverId.profileImage || null }
       : null,
   };
 
@@ -290,7 +291,7 @@ const getMyChatRooms = async (req, res) => {
     const out = await Promise.all(
       rooms.map(async (r) => {
         const otherId = r.participants.find((p) => p.toString() !== req.user.toString());
-        const other = await User.findById(otherId).select("name department").lean();
+        const other = await User.findById(otherId).select("name department profileImage").lean();
         const unread = await Message.countDocuments({
           chatRoomId: r._id,
           receiverId: req.user,
@@ -304,7 +305,7 @@ const getMyChatRooms = async (req, res) => {
           lastMessageText: r.lastMessageText,
           lastMessageAt: r.lastMessageAt,
           unreadCount: unread,
-          otherUser: other ? { _id: other._id, name: other.name } : null,
+          otherUser: other ? { _id: other._id, name: other.name, profileImage: other.profileImage || null } : null,
         };
       })
     );

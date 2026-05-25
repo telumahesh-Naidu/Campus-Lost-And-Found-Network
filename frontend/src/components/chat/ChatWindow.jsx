@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiSend } from "react-icons/fi";
 import toast from "react-hot-toast";
 import API from "../../services/api";
@@ -7,14 +7,18 @@ import { useChat } from "../../context/ChatContext";
 import { getStoredUserId } from "../../utils/authStorage";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
+import ViewProfileModal from "./ViewProfileModal";
 
 export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
   const { getSocket, connected, joinRoom, leaveRoom, emitTyping, emitStopTyping } =
     useChat();
+  const navigate = useNavigate();
   const [meta, setMeta] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [typingName, setTypingName] = useState("");
+  const [viewingProfile, setViewingProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const bottomRef = useRef(null);
   const typingDebounce = useRef(null);
   const isSendingRef = useRef(false);
@@ -249,6 +253,19 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
     typingDebounce.current = setTimeout(() => emitStopTyping(roomId), 1200);
   };
 
+  const handleAvatarClick = async (sender) => {
+    if (!sender?._id) return;
+    setProfileLoading(true);
+    try {
+      const res = await API.get(`/auth/profile/${sender._id}`);
+      setViewingProfile(res.data);
+    } catch {
+      toast.error("Could not load profile");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   if (!roomId) {
     return (
       <div className="flex-1 flex items-center justify-center p-8 text-[var(--text-muted)] text-center">
@@ -270,16 +287,46 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
         >
           <FiArrowLeft />
         </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="font-bold text-[var(--text)] truncate">{other?.name || "Chat"}</h1>
-          <p className="text-xs text-[var(--text-muted)] truncate">
-            {meta?.item?.title || "Campus Lost & Found"}
-            {!connected ? " · reconnecting…" : ""}
-          </p>
-        </div>
+
+        {/* Clickable profile area */}
+        <button
+          type="button"
+          className="flex items-center gap-3 min-w-0 flex-1 text-left hover:opacity-80 transition-opacity"
+          onClick={() => other?._id && navigate(`/profile/${other._id}`)}
+          title="View profile"
+        >
+          {/* Avatar */}
+          <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center text-sm font-bold"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)", color: "#fff" }}>
+            {other?.profileImage ? (
+              <img
+                src={other.profileImage.startsWith("http") ? other.profileImage : `${window.location.origin}${other.profileImage}`}
+                alt={other.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span>{other?.name?.charAt(0).toUpperCase() ?? "?"}</span>
+            )}
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-bold text-[var(--text)] truncate">{other?.name || "Chat"}</h1>
+              {other?._id && (
+                <span className="text-[10px] text-cyan-400 shrink-0">↗</span>
+              )}
+            </div>
+            <p className="text-xs text-[var(--text-muted)] truncate">
+              {meta?.item?.title || "Campus Lost & Found"}
+              {!connected ? " · reconnecting…" : ""}
+            </p>
+          </div>
+        </button>
+
         <Link
           to={`/item/${meta?.room?.lostItemId || meta?.item?._id || ""}`}
           className="text-xs text-cyan-400 hover:underline shrink-0"
+          onClick={(e) => e.stopPropagation()}
         >
           View item
         </Link>
@@ -291,6 +338,7 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
             key={m._id}
             message={m}
             isOwn={String(m.sender?._id || m.senderId) === String(myId)}
+            onAvatarClick={handleAvatarClick}
           />
         ))}
         {typingName ? <TypingIndicator name={typingName} /> : null}
@@ -322,6 +370,15 @@ export default function ChatWindow({ roomId, onBackMobile, onAfterRead }) {
           </button>
         </div>
       </footer>
+
+      {viewingProfile && (
+        <ViewProfileModal user={viewingProfile} onClose={() => setViewingProfile(null)} />
+      )}
+      {profileLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.4)" }}>
+          <div className="text-white text-sm">Loading profile…</div>
+        </div>
+      )}
     </section>
   );
 }

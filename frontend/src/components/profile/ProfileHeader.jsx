@@ -72,7 +72,7 @@ function TiltCard({ children, className = "" }) {
   );
 }
 
-export default function ProfileHeader({ user, profileImage, onImageUpload, greeting }) {
+export default function ProfileHeader({ user, profileImage, onImageUpload, greeting, uploadingImage }) {
   const completion = (() => {
     const fields = [user.name, user.rollNumber, user.department, user.phone, user.github, user.linkedin];
     return Math.round((fields.filter((f) => f?.trim()).length / 6) * 100);

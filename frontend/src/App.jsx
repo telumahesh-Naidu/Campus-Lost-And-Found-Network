@@ -18,6 +18,7 @@ import ItemsList from "./pages/ItemsList";
 import FoundItems from "./pages/FoundItems";
 import LostReports from "./pages/LostReports";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 import ChatLayout from "./layouts/ChatLayout";
 import Messages from "./pages/Messages";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -80,6 +81,7 @@ function AppRoutes() {
       <Route path="/item/:id" element={<ProtectedRoute><ItemDetails /></ProtectedRoute>} />
       <Route path="/report-lost" element={<ProtectedRoute><ReportLostItem /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/profile/:userId" element={<ProtectedRoute><PublicProfile /></ProtectedRoute>} />
 
       <Route path="/messages" element={<ProtectedRoute><ChatLayout /></ProtectedRoute>}>
         <Route index element={<Messages />} />

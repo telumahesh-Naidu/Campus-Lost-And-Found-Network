@@ -1,6 +1,8 @@
 const User = require("../models/User");
 const Otp = require("../models/otp");
 const Item = require("../models/Item");
+const path = require("path");
+const fs = require("fs");
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -272,6 +274,27 @@ const verifyOTP = async (req, res) => {
 };
 
 
+// ================= GET PUBLIC PROFILE =================
+
+const getPublicProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId)
+      .select("name profileImage department rollNumber phone github linkedin isVerified createdAt");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    let postCount = 0;
+    try {
+      postCount = await Item.countDocuments({ postedBy: req.params.userId, isRemoved: { $ne: true } });
+    } catch {}
+
+    res.json({ success: true, user: { ...user.toJSON(), postCount } });
+  } catch (error) {
+    if (error.name === "CastError") return res.status(400).json({ message: "Invalid user ID" });
+    res.status(500).json({ message: "Failed to fetch profile" });
+  }
+};
+
+
 // ================= EXPORTS =================
 
 // ================= GET PROFILE =================
@@ -352,7 +375,48 @@ const updateProfile = async (req, res) => {
 };
 
 
-// ================= EXPORTS =================
+// ================= UPDATE PROFILE IMAGE =================
+
+const updateProfileImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" });
+    }
+
+    const imageUrl = `/uploads/profiles/${req.file.filename}`;
+
+    // Delete old profile image from disk if one exists
+    const existing = await User.findById(req.user).select("profileImage");
+    if (existing?.profileImage && existing.profileImage.startsWith("/uploads/")) {
+      const oldPath = path.join(__dirname, "..", existing.profileImage);
+      if (fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+        console.log("Old profile image deleted:", oldPath);
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user,
+      { profileImage: imageUrl },
+      { new: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("Profile image updated in DB:", imageUrl);
+
+    return res.status(200).json({
+      message: "Profile image updated successfully",
+      profileImage: imageUrl,
+    });
+  } catch (error) {
+    console.error("updateProfileImage error:", error.message);
+    return res.status(500).json({ message: "Failed to update profile image" });
+  }
+};
+
 
 module.exports = {
   registerUser,
@@ -361,4 +425,6 @@ module.exports = {
   verifyOTP,
   getProfile,
   updateProfile,
+  updateProfileImage,
+  getPublicProfile,
 };
