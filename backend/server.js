@@ -20,19 +20,8 @@ const app = express();
 
 const PORT = Number(process.env.PORT) || 5000;
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:4173",
-  "http://127.0.0.1:5173",
-  "http://127.0.0.1:4173",
-  `http://localhost:${PORT}`,
-  `http://127.0.0.1:${PORT}`,
-];
 
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-}));
+app.use(cors());
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -40,8 +29,9 @@ app.use((req, res, next) => {
   next();
 });
 // === Health check (no auth required) ===
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", port: PORT, uptime: process.uptime() });
+const healthResponse = () => ({ status: "ok", port: PORT, uptime: process.uptime() });
+app.get(["/api/health", "/health"], (_req, res) => {
+  res.json(healthResponse());
 });
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
