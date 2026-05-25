@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, SlidersHorizontal, Tag, MapPin, Calendar,
@@ -68,18 +69,51 @@ function FilterGroup({ icon: Icon, label, children }) {
   );
 }
 
-/** Custom animated dropdown menu (replaces native select for dark-mode compatibility) */
+/** Custom animated dropdown menu — rendered in a portal so overflow:hidden ancestors never clip it */
 function SelectMenu({ value, onChange, placeholder, options, className = "" }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
 
+  // Close on outside click
   useEffect(() => {
+    if (!open) return;
     const handleClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        menuRef.current && !menuRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+  }, [open]);
+
+  // Recalculate position on scroll/resize while open
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      if (!triggerRef.current) return;
+      const r = triggerRef.current.getBoundingClientRect();
+      setCoords({ top: r.bottom + 6, left: r.left, width: r.width });
+    };
+    reposition();
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [open]);
+
+  const openMenu = () => {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setCoords({ top: r.bottom + 6, left: r.left, width: r.width });
+    setOpen(true);
+  };
 
   const getLabel = (opt) => (typeof opt === "string" ? opt : opt.label);
   const getValue = (opt) => (typeof opt === "string" ? opt : opt.value);
@@ -88,10 +122,10 @@ function SelectMenu({ value, onChange, placeholder, options, className = "" }) {
   const display = selected ? getLabel(selected) : placeholder;
 
   return (
-    <div className="relative" ref={ref}>
+    <div ref={triggerRef}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setOpen(false) : openMenu())}
         className={`w-full flex items-center justify-between gap-1 bg-white/70 dark:bg-white/[0.06] border border-gray-200/80 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-white/85 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/25 transition-all cursor-pointer ${className}`}
       >
         <span className="truncate">{display}</span>
@@ -101,14 +135,24 @@ function SelectMenu({ value, onChange, placeholder, options, className = "" }) {
         />
       </button>
 
-      <AnimatePresence>
-        {open && (
+      {open && createPortal(
+        <AnimatePresence>
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            ref={menuRef}
+            key="select-menu"
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute z-50 left-0 right-0 mt-1.5 rounded-xl border bg-white dark:bg-[#080c1a]/98 border-gray-200 dark:border-white/[0.06] backdrop-blur-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08),0_0_30px_rgba(59,130,246,0.02)] dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.6),0_0_30px_rgba(59,130,246,0.04)] overflow-hidden py-1"
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              position: "fixed",
+              top: coords.top,
+              left: coords.left,
+              width: coords.width,
+              zIndex: 9999,
+              maxHeight: "min(260px, 50vh)",
+            }}
+            className="rounded-xl border bg-white dark:bg-[#080c1a] border-gray-200 dark:border-white/[0.08] shadow-[0_16px_48px_-8px_rgba(0,0,0,0.18),0_0_30px_rgba(59,130,246,0.04)] dark:shadow-[0_16px_48px_-8px_rgba(0,0,0,0.7)] overflow-y-auto py-1"
           >
             {options.map((opt) => {
               const val = getValue(opt);
@@ -118,14 +162,11 @@ function SelectMenu({ value, onChange, placeholder, options, className = "" }) {
                 <button
                   key={val}
                   type="button"
-                  onClick={() => {
-                    onChange(val);
-                    setOpen(false);
-                  }}
+                  onClick={() => { onChange(val); setOpen(false); }}
                   className={`w-full text-left px-3 py-2.5 text-sm transition-all ${
                     isSelected
-                      ? "bg-cyan-500/12 text-cyan-600 dark:text-cyan-300 font-medium"
-                      : "text-gray-700 dark:text-slate-300 hover:bg-blue-500/12 hover:text-gray-900 dark:hover:text-white"
+                      ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 font-medium"
+                      : "text-gray-700 dark:text-slate-300 hover:bg-blue-500/10 hover:text-gray-900 dark:hover:text-white"
                   }`}
                 >
                   {label}
@@ -133,8 +174,9 @@ function SelectMenu({ value, onChange, placeholder, options, className = "" }) {
               );
             })}
           </motion.div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

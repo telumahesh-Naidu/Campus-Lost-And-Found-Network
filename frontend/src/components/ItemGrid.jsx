@@ -126,6 +126,7 @@ export default function ItemGrid({
   onPageChange,
   hasFilters = false,
   emptyMessage,
+  onItemDeleted,
 }) {
   const safeItems = items ?? [];
 
@@ -156,7 +157,7 @@ export default function ItemGrid({
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.3) }}
               >
-                <ItemCard item={item} />
+                <ItemCard item={item} onItemDeleted={onItemDeleted} />
               </motion.div>
             ))}
           </AnimatePresence>

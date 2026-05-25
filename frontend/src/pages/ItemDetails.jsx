@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import API, { assetUrl } from "../services/api";
 import { getStoredUserId } from "../utils/authStorage";
 import ClaimModal from "../components/ClaimModal";
+import { ConfirmDeleteModal } from "../components/ConfirmDeleteModal";
 import AIVerificationCard from "../components/ai/AIVerificationCard";
 import AIConfidenceBadge from "../components/ai/AIConfidenceBadge";
 import MatchPercentageRing from "../components/ai/MatchPercentageRing";
@@ -34,6 +35,8 @@ function ItemDetails() {
   const [claims, setClaims] = useState([]);
   const [myClaim, setMyClaim] = useState(null);
   const [showClaim, setShowClaim] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchItem = useCallback(async () => {
     if (!id) {
@@ -91,6 +94,18 @@ function ItemDetails() {
       toast.error(error.response?.data?.message || "Review action failed");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await API.delete(`/items/${id}`);
+      toast.success(item.type === "lost" ? "Post removed — glad you got it back!" : "Post removed — thanks for helping!");
+      navigate(item.type === "lost" ? "/lost-reports" : "/found-items");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to remove item.");
+      setIsDeleting(false);
     }
   };
 
@@ -337,9 +352,24 @@ function ItemDetails() {
                     ) : null}
                   </div>
                 ) : (
-                  <div className="bg-gray-100 dark:bg-slate-900/30 border border-gray-200 dark:border-white/5 p-4 rounded-xl text-center text-xs text-gray-400">
-                    <FiInfo className="inline-block text-cyan-400 mr-1.5 text-sm" />
-                    You posted this item. Review pending claims below.
+                  <div className="flex flex-col gap-3">
+                    <div className="bg-gray-100 dark:bg-slate-900/30 border border-gray-200 dark:border-white/5 p-4 rounded-xl text-center text-xs text-gray-400">
+                      <FiInfo className="inline-block text-cyan-400 mr-1.5 text-sm" />
+                      You posted this item. Review pending claims below.
+                    </div>
+
+                    {/* Owner remove button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                        item.type === "lost"
+                          ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25"
+                          : "bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/25"
+                      }`}
+                    >
+                      {item.type === "lost" ? "✅ Item Retrieved — Remove Post" : "📦 Item Delivered — Remove Post"}
+                    </button>
                   </div>
                 )}
 
@@ -519,6 +549,15 @@ function ItemDetails() {
           }}
         />
       )}
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteConfirm}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => !isDeleting && setShowDeleteConfirm(false)}
+        itemType={item?.type}
+        isDeleting={isDeleting}
+      />
     </>
   );
 }

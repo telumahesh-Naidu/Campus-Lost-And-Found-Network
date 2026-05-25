@@ -108,6 +108,11 @@ export function useItemSearch(overrides = {}) {
     ([k, v]) => k !== "sort" && v !== ""
   );
 
+  const removeItem = useCallback((deletedId) => {
+    setItems((prev) => prev.filter((it) => it._id !== deletedId));
+    setTotal((prev) => Math.max(0, prev - 1));
+  }, []);
+
   return {
     filters,
     updateFilter,
@@ -120,5 +125,6 @@ export function useItemSearch(overrides = {}) {
     totalPages,
     loading,
     error,
+    removeItem,
   };
 }

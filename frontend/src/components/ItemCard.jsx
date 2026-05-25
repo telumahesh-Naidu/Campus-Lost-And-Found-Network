@@ -4,9 +4,14 @@ import { assetUrl } from "../services/api";
 import { getStoredUserId } from "../utils/authStorage";
 import { FiEyeOff, FiFlag } from "react-icons/fi";
 import ClaimModal from "./ClaimModal";
+import { ConfirmDeleteModal } from "./ConfirmDeleteModal";
+import API from "../services/api";
+import toast from "react-hot-toast";
 
-function ItemCard({ item }) {
+function ItemCard({ item, onItemDeleted }) {
   const [showClaim, setShowClaim] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!item?._id) return null;
 
@@ -16,8 +21,21 @@ function ItemCard({ item }) {
   const isOwner = myId && ownerId && String(ownerId) === String(myId);
   const shouldBlur = item.blurImage && !isOwner;
 
-  // Show claim button only on found items that are still open, and not posted by current user
   const canClaim = item.type === "found" && item.status === "open" && !isOwner && myId;
+
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await API.delete(`/items/${item._id}`);
+      setShowConfirm(false);
+      toast.success(item.type === "lost" ? "Post removed — glad you got it back!" : "Post removed — thanks for helping!");
+      onItemDeleted?.(item._id);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to remove item. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <>
@@ -73,6 +91,21 @@ function ItemCard({ item }) {
           </article>
         </Link>
 
+        {/* Owner action button — always visible at bottom of card */}
+        {isOwner && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowConfirm(true); }}
+            className={`absolute bottom-3 left-3 right-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 duration-200 ${
+              item.type === "lost"
+                ? "bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-400 border border-emerald-500/30"
+                : "bg-blue-500/20 hover:bg-blue-500/35 text-blue-400 border border-blue-500/30"
+            }`}
+          >
+            {item.type === "lost" ? "✅ Item Retrieved" : "📦 Item Delivered"}
+          </button>
+        )}
+
         {/* "This is Mine" button — overlaid at the bottom of the card */}
         {canClaim && (
           <button
@@ -97,6 +130,15 @@ function ItemCard({ item }) {
           onSuccess={() => setShowClaim(false)}
         />
       )}
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={showConfirm}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => !isDeleting && setShowConfirm(false)}
+        itemType={item.type}
+        isDeleting={isDeleting}
+      />
     </>
   );
 }

@@ -10,6 +10,7 @@ const {
   getLostItems,
   getSingleItem,
   searchItems,
+  deleteItem,
 } = require("../controllers/itemController");
 
 router.get("/search", searchItems);          // GET /api/items/search
@@ -18,5 +19,6 @@ router.post("/report-lost", protect, upload.single("image"), reportLostItem);
 router.get("/all", getAllItems);
 router.get("/lost", getLostItems);
 router.get("/:id", getSingleItem);
+router.delete("/:id", protect, deleteItem);  // DELETE /api/items/:id
 
 module.exports = router;

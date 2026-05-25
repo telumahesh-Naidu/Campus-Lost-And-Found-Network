@@ -10,7 +10,7 @@ const OVERRIDES = { type: "lost" };
 function LostReports() {
   const {
     filters, updateFilter, resetFilters, hasActiveFilters,
-    items, total, totalPages, page, setPage, loading, error,
+    items, total, totalPages, page, setPage, loading, error, removeItem,
   } = useItemSearch(OVERRIDES);
 
   return (
@@ -69,6 +69,7 @@ function LostReports() {
           onPageChange={setPage}
           hasFilters={hasActiveFilters}
           emptyMessage="No lost items have been reported yet."
+          onItemDeleted={removeItem}
         />
 
         {/* Mobile report CTA */}

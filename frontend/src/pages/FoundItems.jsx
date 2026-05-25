@@ -10,7 +10,7 @@ const OVERRIDES = { type: "found" };
 function FoundItems() {
   const {
     filters, updateFilter, resetFilters, hasActiveFilters,
-    items, total, totalPages, page, setPage, loading, error,
+    items, total, totalPages, page, setPage, loading, error, removeItem,
   } = useItemSearch(OVERRIDES);
 
   return (
@@ -69,6 +69,7 @@ function FoundItems() {
           onPageChange={setPage}
           hasFilters={hasActiveFilters}
           emptyMessage="No found items have been posted yet."
+          onItemDeleted={removeItem}
         />
 
         {/* Mobile post CTA */}
