@@ -2,7 +2,7 @@ import axios from "axios";
 
 const baseURL =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? "/api" : "http://localhost:5000/api");
+  (import.meta.env.DEV ? "/api" : "https://campus-lost-and-found-network-backend.onrender.com/api");
 
 const API = axios.create({
   baseURL,
